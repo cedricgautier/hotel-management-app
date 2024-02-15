@@ -1,0 +1,21 @@
+version: "3.8"
+services:
+  back:
+    build: .
+    volumes:
+      - ./src/ced:/app/src/ced
+    ports:
+      - 5000:5000
+    env_file: ".env"
+  db:
+    image: mysql:latest
+    restart: always
+    environment:
+      - MYSQL_DATABASE=tp-ced
+      - MYSQL_ROOT_PASSWORD=pass #KBKtdiSdlJv0G/W7mUkqHdVUtvQ0k8v1 --if not the password should be shown in shell output
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
