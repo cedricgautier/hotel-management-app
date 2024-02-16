@@ -10,12 +10,12 @@ from flask import Blueprint, request, jsonify
 main = Blueprint("main", __name__)
 
 
-@main.route("/")
+@main.route("/")  # Is Working ✅
 def index():
     return "Hello World"
 
 
-@main.route("/api/clients", methods=["POST"])
+@main.route("/api/clients", methods=["POST"])  # Is Working ✅
 def insert_client():
     if request.method == post_string:
         res = request.json
@@ -26,17 +26,19 @@ def insert_client():
 
     new_client = Client(nom=res.get(nom_string), email=res.get(email_string))
     db.session.add(new_client)
-    db.session.commit()
+    try:
+        db.session.commit()
+        return jsonify(
+            {
+                nom_string: new_client.nom,
+                email_string: new_client.email,
+            }
+        )
+    except Exception:
+        return jsonify(error_add_payload)
 
-    return jsonify(
-        {
-            nom_string: new_client.nom,
-            email_string: new_client.email,
-        }
-    )
 
-
-@main.route("/api/chambres", methods=["GET", "POST"])
+@main.route("/api/chambres", methods=["GET", "POST"])  # Is Working ✅
 def get_or_create_chambre():
     response = {}
     if request.method == get_string:
@@ -55,7 +57,7 @@ def get_or_create_chambre():
 
             try:
                 return jsonify({all_rooms_string: response})
-            except Exception as e:
+            except Exception:
                 return jsonify(error_get_payload)
         return jsonify(no_rooms_available_string)
 
@@ -72,60 +74,72 @@ def get_or_create_chambre():
             prix=res.get(prix_string),
         )
         db.session.add(new_room)
-        db.session.commit()
 
-        return jsonify(
-            {success_string: True, message_string: success_chambre_add_string}
-        )
+        try:
+            db.session.commit()
+            return jsonify(
+                {success_string: True, message_string: success_chambre_add_string}
+            )
+        except Exception:
+            return jsonify(error_add_payload)
 
 
-@main.route("/api/chambres/disponibles", methods=["GET"])
+@main.route("/api/chambres/disponibles", methods=["GET"])  # Is Working ✅
 def search_available_rooms():
+    response = {}
     if request.method == get_string:
         res = request.json
         date_arrivee = res.get(date_arrivee_string)
         date_depart = res.get(date_depart_string)
         rooms = Chambre.query.all()
-        available_rooms = get_available_rooms(rooms, date_arrivee, date_depart)
+        if rooms is None:
+            return jsonify({response_string: no_rooms_available_string})
 
+        available_rooms = get_available_rooms(rooms, date_arrivee, date_depart)
         if available_rooms is None:
             return jsonify(no_rooms_available_string)
 
-        return jsonify(
-            chambres=[
-                {
-                    id_string: room.id,
-                    type_string: room.type,
-                    numero_string: room.numero,
-                    client_reservations_string: room.reservations,
-                }
-                for room in available_rooms
-            ]
-        )
-
-
-@main.route("/api/chambres/add-batch", methods=["POST"])
-def create_100_standard_rooms():
-    if request.method == post_string:
-        rooms = Chambre.query.all()
-        for x in range(100):
-            try:
-                new_room = Chambre(numero=str(len(rooms) + x))
-                db.session.add(new_room)
-                db.session.commit()
-
-            except Exception:
-                return jsonify(error_add_payload)
-
-        return jsonify(
-            {
-                success_string: True,
-                message_string: success_chambre_add_string + "100 rooms",
+        for room in available_rooms:
+            room_details = {
+                numero_string: room.numero,
+                type_string: room.type,
+                prix_string: room.prix,
+                numero_string: room.numero,
             }
-        )
+
+            response[room.id] = room_details
+
+        return jsonify({all_rooms_string: response})
 
 
-@main.route("/api/chambres/delete-all", methods=["DELETE"])
+@main.route("/api/chambres/add-batch", methods=["GET"])  # Is Working ✅
+def create_100_standard_rooms():
+    last_room = None
+    rooms = Chambre.query.all()
+
+    if rooms:
+        last_room = rooms[-1]
+
+    for x in range(1, 101):
+        if last_room and str(x) == last_room.numero:
+            continue
+        new_room = Chambre(numero=str(int(last_room.numero) + x if last_room else x))
+        db.session.add(new_room)
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            return jsonify(error_add_payload)
+
+    return jsonify(
+        {
+            success_string: True,
+            message_string: success_chambre_add_string + "100 rooms",
+        }
+    )
+
+
+@main.route("/api/chambres/delete-all", methods=["DELETE"])  # Is Working ✅
 def delete_all_rooms():
     if request.method == delete_string:
         try:
@@ -142,12 +156,11 @@ def delete_all_rooms():
             return jsonify(error_delete_all_payload)
 
 
-@main.route("/api/chambres/<int:id>", methods=["PUT", "DELETE"])
+@main.route("/api/chambres/<int:id>", methods=["PUT", "DELETE"])  # Is Working ✅
 def modify_delete_chambre(id):
+    room = Chambre.query.get_or_404(id)
     if request.method == put_string:
         res = request.json
-
-        room = Chambre.query.get_or_404(id)
         if res.get(type_string) is not None:
             room.type = res.get(type_string)
 
@@ -167,16 +180,19 @@ def modify_delete_chambre(id):
             return jsonify({error_modify_payload})
 
     if request.method == delete_string:
-        room_from_id = Chambre.query.get_or_404(id)
-        db.session.delete(room_from_id)
-        db.session.commit()
+        room_to_delete = Chambre.query.get_or_404(id)
+        db.session.delete(room_to_delete)
 
-        return jsonify(
-            {success_string: True, message_string: success_chambre_delete_string}
-        )
+        try:
+            db.session.commit()
+            return jsonify(
+                {success_string: True, message_string: success_chambre_delete_string}
+            )
+        except Exception:
+            return jsonify(error_delete_payload)
 
 
-@main.route("/api/reservations", methods=["POST"])
+@main.route("/api/reservations", methods=["POST"])  # Is Working ✅
 def get_or_create_reservations():
     if request.method == post_string:
         res = request.json
@@ -215,13 +231,16 @@ def get_or_create_reservations():
             return jsonify({error_add_payload})
 
 
-@main.route("/api/reservations/<int:id>", methods=["PUT", "DELETE"])
+@main.route("/api/reservations/<int:id>", methods=["PUT", "DELETE"])  # Is Working ✅
 def delete_reservation(id):
     if request.method == delete_string:
         reservation = Reservation.query.get_or_404(id)
         db.session.delete(reservation)
-        db.session.commit()
 
-        return jsonify(
-            {success_string: True, message_string: success_chambre_delete_string}
-        )
+        try:
+            db.session.commit()
+            return jsonify(
+                {success_string: True, message_string: success_chambre_delete_string}
+            )
+        except Exception as e:
+            return jsonify(error_delete_payload)
