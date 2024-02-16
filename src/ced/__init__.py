@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from flask import Flask
 from .routes import main as main_routes
 from .database import initialize_db_config
-from .bp import register_blueprints
+from .blueprints import register_blueprints
 
 
 # from flask_login import LoginManager
