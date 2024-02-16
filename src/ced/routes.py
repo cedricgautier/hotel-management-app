@@ -1,4 +1,4 @@
-import string
+import random, logging
 from .chambres import get_available_rooms
 from .models import Client, Chambre, Reservation
 from .database import db
@@ -38,19 +38,26 @@ def insert_client():
 
 @main.route("/api/chambres", methods=["GET", "POST"])
 def get_or_create_chambre():
+    response = {}
     if request.method == get_string:
         rooms = Chambre.query.all()
-        return jsonify(
-            chambres=[
-                {
-                    id_string: room.id,
-                    type_string: room.type,
+
+        if rooms is not None:
+            for room in rooms:
+                room_details = {
                     numero_string: room.numero,
-                    client_reservations_string: room.reservations,
+                    type_string: room.type,
+                    prix_string: room.prix,
+                    numero_string: room.numero,
                 }
-                for room in rooms
-            ]
-        )
+
+                response[room.id] = room_details
+
+            try:
+                return jsonify({all_rooms_string: response})
+            except Exception as e:
+                return jsonify(error_get_payload)
+        return jsonify(no_rooms_available_string)
 
     if request.method == post_string:
         res = request.json
@@ -128,10 +135,10 @@ def delete_all_rooms():
             return jsonify(
                 {
                     success_string: True,
-                    message_string: success_all_chambrse_delete_string,
+                    message_string: success_all_chambres_delete_string,
                 }
             )
-        except Exception as e:
+        except Exception:
             return jsonify(error_delete_all_payload)
 
 
@@ -173,22 +180,39 @@ def modify_delete_chambre(id):
 def get_or_create_reservations():
     if request.method == post_string:
         res = request.json
-        keys = list(res.keys())
+        date_arrivee = res.get(date_arrivee_string)
+        date_depart = res.get(date_depart_string)
 
-        if validate_payload_post(keys, room_string):
-            return jsonify(error_payload)
+        rooms = Chambre.query.all()
+        if rooms is None:
+            return jsonify({response_string: no_rooms_available_string})
 
-        new_room = Chambre(
-            numero=res.get(numero_string),
-            type=res.get(type_string),
-            prix=res.get(prix_string),
+        available_rooms = get_available_rooms(rooms, date_arrivee, date_depart)
+        if len(available_rooms) is 0:
+            return jsonify({response_string: no_rooms_available_string})
+
+        free_room = random.choice(available_rooms)
+
+        new_reservation = Reservation(
+            id_client=res.get(id_client_string),
+            id_chambre=free_room.id,
+            date_arrivee=date_arrivee,
+            date_depart=date_depart,
+            statut=res.get(statut_string),
         )
-        db.session.add(new_room)
-        db.session.commit()
 
-        return jsonify(
-            {success_string: True, message_string: success_chambre_add_string}
-        )
+        db.session.add(new_reservation)
+
+        try:
+            db.session.commit()
+            return jsonify(
+                {
+                    success_string: True,
+                    message_string: success_reservation_add_string,
+                }
+            )
+        except Exception:
+            return jsonify({error_add_payload})
 
 
 @main.route("/api/reservations/<int:id>", methods=["PUT", "DELETE"])
