@@ -22,4 +22,4 @@ class Reservation(db.Model):
     id_chambre = db.Column(db.Integer, db.ForeignKey("chambre.id"), nullable=False)
     date_arrivee = db.Column(db.Date, nullable=False)
     date_depart = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(50))
+    statut = db.Column(db.String(50), default="Booked")
