@@ -77,9 +77,9 @@ def search_available_rooms():
     if request.method == get_string:
         res = request.json
         date_arrivee = res.get(date_arrivee_string)
-        date_depart_string = res.get(date_depart_string)
+        date_depart = res.get(date_depart_string)
         rooms = Chambre.query.all()
-        available_rooms = get_available_rooms(rooms, date_arrivee, date_depart_string)
+        available_rooms = get_available_rooms(rooms, date_arrivee, date_depart)
 
         if available_rooms is None:
             return jsonify(no_rooms_available_string)
