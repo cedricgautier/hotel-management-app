@@ -40,4 +40,5 @@ error_payload = {"error": "invalid payload"}
 error_get_payload = {"error": "unable to get element"}
 error_add_payload = {"error": "unable to add element"}
 error_modify_payload = {"error": "unable to modify element"}
+error_delete_payload = {"error": "unable to delete elements"}
 error_delete_all_payload = {"error": "unable to delete all elements"}
