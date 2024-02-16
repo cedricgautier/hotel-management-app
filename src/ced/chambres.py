@@ -8,7 +8,7 @@ def get_available_rooms(rooms: list, check_in_date: str, check_out_date: str) ->
     check_out_date_object = datetime.strptime(check_out_date, "%Y-%m-%d").date()
 
     for room in rooms:
-        if ~room_has_reservation(
+        if not room_has_reservation(
             room,
             check_in_date_object,
             check_out_date_object,
